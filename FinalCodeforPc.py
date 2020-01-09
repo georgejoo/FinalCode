@@ -1,29 +1,28 @@
 import cv2
 import numpy as np
 
+
 last_angle = 0
 
-def steering(averaged_lines, frame):
-    a1 = 0
-    a2 = 0
-    a = 0
-    angle = 0
-    if len(averaged_lines) == 2 and averaged_lines != 0:
-        if (averaged_lines[1][0][0] - averaged_lines[1][0][2]) and (averaged_lines[0][0][0] - averaged_lines[0][0][2]) != 0:
-            a1 = np.arctan((averaged_lines[1][0][3] - averaged_lines[1][0][1]) / (averaged_lines[1][0][2] - averaged_lines[1][0][0]))
-            a2 = np.arctan((averaged_lines[0][0][1] - averaged_lines[0][0][3]) / (averaged_lines[0][0][0] - averaged_lines[0][0][2]))
+
+def steering(steering_averaged_lines, steering_frame):
+    steering_angle = 0
+    if len(steering_averaged_lines) == 2 and steering_averaged_lines != 0:
+        if (steering_averaged_lines[1][0][0] - steering_averaged_lines[1][0][2]) and (steering_averaged_lines[0][0][0] - steering_averaged_lines[0][0][2]) != 0:
+            a1 = np.arctan((steering_averaged_lines[1][0][3] - steering_averaged_lines[1][0][1]) / (steering_averaged_lines[1][0][2] - steering_averaged_lines[1][0][0]))
+            a2 = np.arctan((steering_averaged_lines[0][0][1] - steering_averaged_lines[0][0][3]) / (steering_averaged_lines[0][0][0] - steering_averaged_lines[0][0][2]))
             a = (a1 + a2) / 2
             a = int((360 / (2*np.pi)) * a)
-            angle = 90 + a
-    if len(averaged_lines) == 1 and averaged_lines != 0:
-        x1 = averaged_lines[0][0][0]
-        x2 = averaged_lines[0][0][2]
+            steering_angle = 90 + a
+    if len(steering_averaged_lines) == 1 and steering_averaged_lines != 0:
+        x1 = steering_averaged_lines[0][0][0]
+        x2 = steering_averaged_lines[0][0][2]
         x_offset = x2 - x1
-        y_offset = int(frame.shape[0] / 2)
+        y_offset = int(steering_frame.shape[0] / 2)
         a = np.arctan(x_offset / y_offset)
         a = int((360 / (2*np.pi)) * a)
-        angle = 90 + a
-    return angle
+        steering_angle = 90 + a
+    return steering_angle
 
 
 def make_points(image, line):
@@ -116,16 +115,11 @@ def region_of_interest(canny_met):
     return masked_image
 
 
-
 def stabilize_steering_angle(
         angle,
         last_angle,
         num_of_lane_lines):
-    """
-    Using last steering angle to stabilize the steering angle
-    if new angle is too different from current angle,
-    only turn by max_angle_deviation degrees
-    """
+
     if num_of_lane_lines == 2:
         # if both lane lines detected, then we can deviate more
         max_angle_deviation = 5
@@ -139,15 +133,12 @@ def stabilize_steering_angle(
         stabilized_angle = angle
     return stabilized_angle
 
-# image = cv2.imread('test_image.jpg')
-# lane_image = np.copy(image)
-# lane_canny = canny(lane_image)
-# cropped_canny = region_of_interest(lane_canny)
-# lines = cv2.HoughLinesP(cropped_canny, 2, np.pi/180, 100, np.array([]), minLineLength=40,maxLineGap=5)
-# averaged_lines = average_slope_intercept(image, lines)
-# line_image = display_lines(lane_image, averaged_lines)
-# combo_image = cv2.addWeighted(lane_image, 0.8, line_image, 1, 0)
 
+def car_speed(line_number, angle_reached):
+    if line_number == 2 and ((angle_reached > 87) and (angle_reached < 93)):
+        print(100)
+    if line_number == 1:
+        print(60)
 
 
 cap = cv2.VideoCapture('video_lap_home.avi')
@@ -163,6 +154,7 @@ while cap.isOpened():
     stabilize_angle = stabilize_steering_angle(angle, last_angle, len(averaged_lines))
     line_image = display_lines(frame, averaged_lines)
     combo_image = cv2.addWeighted(frame, 0.8, line_image, 1, 1)
+    car_speed(len(averaged_lines), stabilize_angle)
     last_angle = angle
     cv2.imshow("result", frame)
     cv2.imshow("result0", canny_image)
